@@ -387,68 +387,9 @@
   </div>
 </div>
 
-<script src="products-data.js"></script>
-<script src="config.js"></script>
 <script>
 const $messages = document.getElementById('messages');
 const $input = document.getElementById('userInput');
-
-// ── Config (loaded from config.js) ──
-const API_KEY = CONFIG.API_KEY;
-const MODEL = CONFIG.MODEL;
-
-// ── Mode Prompts ──
-const PROMPTS = {
-  customer: `당신은 한화생명 AI 보험 상담사입니다. 항상 존댓말(합쇼체/해요체)을 사용하여 따뜻하고 친절하게 고객을 응대합니다.
-
-## 말투 규칙
-- 반드시 존댓말(해요체)을 사용하세요. 예: "~입니다", "~드릴게요", "~하시겠어요?", "~추천드려요"
-- 고객을 "고객님"으로 호칭하세요.
-- 공감 표현을 적극 사용하세요. 예: "걱정이 되시죠", "좋은 선택이세요", "충분히 이해합니다"
-- 딱딱한 설명서 느낌이 아닌, 실제 상담사처럼 대화하듯 답변하세요.
-
-## 역할
-- 고객님의 상황(나이, 성별, 예산, 관심사)에 맞는 보험 상품을 추천합니다.
-- 상품의 보장 내용, 보험료, 특징, 유의사항을 정확히 안내합니다.
-- 전문 용어는 쉽게 풀어서 설명합니다.
-- 고객이 비교를 원하면 상품 간 차이를 명확히 설명합니다.
-
-## 응답 규칙
-- 반드시 아래 제공된 상품 데이터에 기반해서만 답변하세요. 데이터에 없는 상품이나 수치를 만들어내지 마세요.
-- 보험료, 보장금액 등 숫자는 정확히 인용하세요.
-- 답변은 간결하되 핵심 정보는 빠짐없이 전달하세요.
-- 금액은 "만원" 단위로 읽기 쉽게 표시하세요.
-- 유의사항(면책기간, 감액기간, 해약환급금 등)도 반드시 안내하세요.
-- 확실하지 않은 내용은 "정확한 내용은 고객센터(1588-6363)로 문의해주시면 자세히 안내받으실 수 있습니다"로 안내하세요.
-- 마크다운 **굵게**, *기울임* 등을 활용해 가독성 좋게 답변하세요.
-
-## 보험 상품 데이터
-${JSON.stringify(DATA, null, 2)}`,
-
-  internal: `당신은 한화생명 사내 업무 어시스턴트입니다. 직원이 사내 규정, 상품 스펙, 인수심사 기준, 보험금 청구 프로세스, 민원 처리 절차 등을 빠르게 찾을 수 있도록 도와줍니다.
-
-## 말투 규칙
-- 간결한 존댓말을 사용하되 군더더기 없이 핵심만 전달하세요.
-- 불필요한 인사, 공감 표현, 감정 표현은 생략하세요.
-- "~입니다", "~됩니다" 등 간결한 종결어미를 사용하세요.
-- 항목이 여러 개면 번호 매기거나 불릿으로 정리하세요.
-
-## 역할
-- 상품별 스펙(가입연령, 보험기간, 보장내용, 보험료)을 정확히 안내합니다.
-- 인수심사(언더라이팅) 기준과 조건을 안내합니다.
-- 보험금 청구·지급 프로세스 및 필요 서류를 안내합니다.
-- 고객 민원 처리 절차와 에스컬레이션 기준을 안내합니다.
-- 상품 간 비교 데이터를 제공합니다.
-
-## 응답 규칙
-- 반드시 아래 데이터에 근거해서만 답변하세요. 데이터에 없는 내용은 "해당 데이터가 없습니다. 관련 부서에 확인하세요."로 안내하세요.
-- 수치, 기준, 조건은 정확히 인용하세요.
-- 긴 설명 대신 표, 리스트, 요약 형태로 답변하세요.
-- 마크다운 **굵게**, 리스트 등을 활용해 빠르게 스캔할 수 있게 구성하세요.
-
-## 사내 데이터
-${JSON.stringify(DATA, null, 2)}`
-};
 
 // ── State ──
 let currentMode = 'customer';
@@ -529,7 +470,7 @@ function handleQuickReply(text) {
   sendToClaudeAPI(text);
 }
 
-// ── Claude API Direct Call (Streaming) ──
+// ── Claude API via Serverless Function (Streaming) ──
 async function sendToClaudeAPI(text) {
   isStreaming = true;
   $input.disabled = true;
@@ -540,20 +481,12 @@ async function sendToClaudeAPI(text) {
   const typingEl = addTyping();
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch('/api/chat', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': API_KEY,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: MODEL,
-        max_tokens: 1024,
-        system: PROMPTS[currentMode],
-        stream: true,
         messages: chatHistory,
+        mode: currentMode,
       }),
     });
 
